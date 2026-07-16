@@ -1,4 +1,5 @@
 import os
+import sqlite3
 from typing import TypedDict, Dict, Any, List
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, AIMessage
@@ -6,7 +7,7 @@ from langgraph.graph import StateGraph, END
 from langchain_core.tools import tool
 
 # IMPORTANT: You must set your Groq API key here for the LLM to work!
-os.environ["GROQ_API_KEY"] = "my groq api key"
+os.environ["GROQ_API_KEY"] = "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"
 
 # 1. Define the State
 class AgentState(TypedDict):
@@ -16,7 +17,7 @@ class AgentState(TypedDict):
 
 # 2. Define the 5 LangGraph Tools
 @tool
-def log_interaction(hcp_name: str, interaction_type: str, date: str, sentiment: str, materials_shared: str) -> Dict[str, Any]:
+def log_interaction(hcp_name: str, interaction_type: str, date: str, sentiment: str, materials_shared: str, topics_discussed: str) -> Dict[str, Any]:
     """Use this tool to log a completely new interaction with a Healthcare Professional."""
     return {
         "action": "log",
@@ -25,10 +26,10 @@ def log_interaction(hcp_name: str, interaction_type: str, date: str, sentiment: 
             "interactionType": interaction_type,
             "date": date,
             "sentiment": sentiment,
-            "materialsShared": [materials_shared]
+            "materialsShared": [materials_shared],
+            "topicsDiscussed": topics_discussed
         }
     }
-
 @tool
 def edit_interaction(field_to_update: str, new_value: Any) -> Dict[str, Any]:
     """Use this tool to modify or edit an ALREADY logged interaction if the user corrects you."""
@@ -54,10 +55,29 @@ def schedule_follow_up(date: str, action_item: str) -> Dict[str, Any]:
 @tool
 def crm_history_lookup(hcp_name: str) -> Dict[str, Any]:
     """Use this tool to look up past interactions with a specific HCP."""
-    return {
-        "action": "reply",
-        "data": f"Database indicates you last met with {hcp_name} on October 12th. Sentiment was Neutral."
-    }
+    try:
+        # Connect to our SQL database
+        conn = sqlite3.connect('crm_data.db')
+        cursor = conn.cursor()
+        
+        # Execute a real SQL Query to find the doctor
+        cursor.execute("SELECT last_meeting_date, sentiment FROM past_interactions WHERE hcp_name LIKE ?", (f'%{hcp_name}%',))
+        result = cursor.fetchone()
+        conn.close()
+        
+        if result:
+            date, sentiment = result
+            return {
+                "action": "reply",
+                "data": f"SQL Database indicates you last met with {hcp_name} on {date}. Sentiment was {sentiment}."
+            }
+        else:
+            return {
+                "action": "reply",
+                "data": f"No past interaction records found for {hcp_name} in the SQL database."
+            }
+    except Exception as e:
+        return {"action": "reply", "data": f"Database error: {str(e)}"}
 
 @tool
 def recommend_content(topic: str) -> Dict[str, Any]:
