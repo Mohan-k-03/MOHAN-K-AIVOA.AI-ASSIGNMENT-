@@ -7,7 +7,7 @@ from langgraph.graph import StateGraph, END
 from langchain_core.tools import tool
 
 # IMPORTANT: You must set your Groq API key here for the LLM to work!
-os.environ["GROQ_API_KEY"] = "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"
+os.environ["GROQ_API_KEY"] = "gsk_pXEZJRzxzxxxxxxxxxxxxxxxxxxxxxxxxxxxxxHlOR73Vqc2Y0zW"
 
 # 1. Define the State
 class AgentState(TypedDict):
